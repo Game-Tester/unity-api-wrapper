@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public enum GameTesterMode { Production, Test, Sandbox }
+public enum GameTesterMode { Production, Sandbox }
 public enum GameTesterPlayerAuthenticationMode { Token, Pin }
 
 public static class GameTester
@@ -15,8 +15,7 @@ public static class GameTester
     private static Dictionary<GameTesterMode, string> serverUrls = new Dictionary<GameTesterMode, string>
     {
         { GameTesterMode.Production, "https://server.gametester.co/dev-api" },
-        { GameTesterMode.Sandbox, "https://server.gametester.co/dev-api-sandbox" },
-        { GameTesterMode.Test, "https://server.gametester.co/dev-api-test" },
+        { GameTesterMode.Sandbox, "https://server.gametester.co/dev-api-sandbox" }
     };
     private static string serverUrl { get { return serverUrls[Mode]; } }
 
