@@ -10,6 +10,17 @@ public enum GameTesterPlayerAuthenticationMode { Token, Pin }
 public static class GameTester
 {
     // ------------------------------------------------------------------------------------------------------ //
+    // Constructor
+    // ------------------------------------------------------------------------------------------------------ //
+    static GameTester()
+    {
+        Initialized = false;
+        Mode = GameTesterMode.Sandbox;
+        PlayerAuthenticated = false;
+        PlayerAuthenticationMode = GameTesterPlayerAuthenticationMode.Pin;
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
     // Static Data
     // ------------------------------------------------------------------------------------------------------ //
     private static Dictionary<GameTesterMode, string> serverUrls = new Dictionary<GameTesterMode, string>
@@ -22,11 +33,11 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     // Properties
     // ------------------------------------------------------------------------------------------------------ //
-    public static bool Initialized { get; private set; } = false;
-    public static GameTesterMode Mode { get; private set; } = GameTesterMode.Sandbox;
+    public static bool Initialized { get; private set; }
+    public static GameTesterMode Mode { get; private set; }
 
-    public static bool PlayerAuthenticated { get; private set; } = false;
-    public static GameTesterPlayerAuthenticationMode PlayerAuthenticationMode { get; private set; } = GameTesterPlayerAuthenticationMode.Pin;
+    public static bool PlayerAuthenticated { get; private set; }
+    public static GameTesterPlayerAuthenticationMode PlayerAuthenticationMode { get; private set; }
 
     // ------------------------------------------------------------------------------------------------------ //
     // Private Fields
@@ -63,7 +74,7 @@ public static class GameTester
 
     private static IEnumerator doPost(string subUrl, Dictionary<string, string> body, Action<GameTesterResponse> callback)
     {
-        using (var post = UnityWebRequest.Post($"{serverUrl}{subUrl}", body))
+        using (var post = UnityWebRequest.Post(String.Format("{0}{1}", serverUrl, subUrl), body))
         {
             yield return post.SendWebRequest();
 
@@ -159,7 +170,7 @@ public struct GameTesterResponse
                 Message = response.message
             };
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             return new GameTesterResponse
             {
@@ -184,5 +195,5 @@ public struct GameTesterResponse
         public string message;
     }
 
-    public override string ToString() => $"[({(int)Code}){Enum.GetName(typeof(GameTesterResponseCode), Code)}] {Message}";
+    public override string ToString() { return String.Format("[({0}){1}] {2}", (int)Code, Enum.GetName(typeof(GameTesterResponseCode), Code), Message); }
 }
