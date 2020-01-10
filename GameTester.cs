@@ -25,8 +25,8 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     private static Dictionary<GameTesterMode, string> serverUrls = new Dictionary<GameTesterMode, string>
     {
-        { GameTesterMode.Production, "https://server.gametester.co/dev-api" },
-        { GameTesterMode.Sandbox, "https://server.gametester.co/dev-api-sandbox" }
+        { GameTesterMode.Production, "https://server.gametester.gg/dev-api/v1" },
+        { GameTesterMode.Sandbox, "https://server.gametester.gg/dev-api-sandbox/v1" }
     };
     private static string serverUrl { get { return serverUrls[Mode]; } }
 
@@ -122,7 +122,7 @@ public static class GameTester
         public static IEnumerator UnlockTest(Action<GameTesterResponse> callback)
         {
             var body = createApiObject();
-            body.Add("function", "unlockPlayerTest");
+            body.Add("function", "unlock");
             return doPost(string.Empty, body, callback);
         }
     }
@@ -152,6 +152,7 @@ public enum GameTesterResponseCode: int
     InvalidPlayerForTest = 9,
     InvalidFunctionName = 10,
     TestAlreadyUnlocked = 11,
+    TestNotInSetupState = 12,
 }
 
 public struct GameTesterResponse
