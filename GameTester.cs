@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -74,14 +75,42 @@ public static class GameTester
 
     private static IEnumerator doPost(string subUrl, Dictionary<string, string> body, Action<GameTesterResponse> callback)
     {
-        using (var post = UnityWebRequest.Post(String.Format("{0}{1}", serverUrl, subUrl), body))
+        using (var request = new UnityWebRequest(String.Format("{0}{1}", serverUrl, subUrl), "POST"))
         {
-            yield return post.SendWebRequest();
+            var sb = new StringBuilder();
+            sb.Append('{');
+            int index = 0;
+            foreach (var prop in body)
+            {
+                sb.Append('"');
+                sb.Append(prop.Key);
+                sb.Append('"');
 
-            if (post.isNetworkError || post.isHttpError)
-                callback(GameTesterResponse.HttpError(post.error));
+                sb.Append(':');
+                sb.Append('"');
+                sb.Append(prop.Value);
+                sb.Append('"');
+
+                if (index < body.Count - 1) 
+                {
+                    sb.Append(',');
+                }
+                index++;
+            }
+            sb.Append('}');
+
+            var json = sb.ToString();
+            byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(json);
+            request.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
+            request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            yield return request.SendWebRequest();
+
+            if (request.isNetworkError || request.isHttpError)
+                callback(GameTesterResponse.HttpError(request.error));
             else
-                callback(GameTesterResponse.ParseResponse(post.downloadHandler.text));
+                callback(GameTesterResponse.ParseResponse(request.downloadHandler.text));
         }
     }
 
