@@ -59,9 +59,9 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     // Private Helper Methods
     // ------------------------------------------------------------------------------------------------------ //
-    private static Dictionary<string, string> createApiObject()
+    private static Dictionary<string, object> createApiObject()
     {
-        var obj = new Dictionary<string, string>();
+        var obj = new Dictionary<string, object>();
 
         obj.Add("developerToken", developerToken);
 
@@ -73,7 +73,7 @@ public static class GameTester
         return obj;
     }
 
-    private static IEnumerator doPost(string subUrl, Dictionary<string, string> body, Action<GameTesterResponse> callback)
+    private static IEnumerator doPost(string subUrl, Dictionary<string, object> body, Action<GameTesterResponse> callback)
     {
         using (var request = new UnityWebRequest(String.Format("{0}{1}", serverUrl, subUrl), "POST"))
         {
@@ -87,9 +87,16 @@ public static class GameTester
                 sb.Append('"');
 
                 sb.Append(':');
-                sb.Append('"');
-                sb.Append(prop.Value);
-                sb.Append('"');
+                if (prop.Value is string) 
+                {
+                    sb.Append('"');
+                    sb.Append(prop.Value);
+                    sb.Append('"');
+                }
+                else
+                {
+                    sb.Append(prop.Value);
+                }
 
                 if (index < body.Count - 1) 
                 {
@@ -144,7 +151,7 @@ public static class GameTester
         public static IEnumerator Datapoint(int datapointId, Action<GameTesterResponse> callback)
         {
             var body = createApiObject();
-            body.Add("datapointId", datapointId.ToString());
+            body.Add("datapointId", datapointId);
             return doPost(string.Empty, body, callback);
         }
 
