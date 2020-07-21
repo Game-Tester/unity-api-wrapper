@@ -173,10 +173,11 @@ public enum GameTesterResponseCode: int
 {
     HttpError = -10,
     ResponseParseError = -11,
-
-    GeneralError = -1,
-    Success = 0,
-
+    
+    Success = -1,
+    
+    GeneralError = 0,
+    
     MissingDeveloperToken = 1,
     MissingPlayerAuthentication = 2,
     InvalidDeveloperToken = 3,
@@ -226,7 +227,8 @@ public struct GameTesterResponse
         };
     }
 
-    private class ResponseJson
+    [System.Serializable]
+    public class ResponseJson
     {
         public int code;
         public string message;
