@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 public enum GameTesterMode { Production, Sandbox }
-public enum GameTesterPlayerAuthenticationMode { Token, Pin }
+public enum GameTesterPlayerAuthenticationMode { ConnectToken, Pin }
 
 public static class GameTester
 {
@@ -26,8 +26,11 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     private static Dictionary<GameTesterMode, string> serverUrls = new Dictionary<GameTesterMode, string>
     {
-        { GameTesterMode.Production, "https://server.gametester.gg/dev-api/v1" },
-        { GameTesterMode.Sandbox, "https://server.gametester.gg/dev-api/v1/sandbox" }
+        //{ GameTesterMode.Production, "https://server.gametester.gg/dev-api/v1" },
+        //{ GameTesterMode.Sandbox, "https://server.gametester.gg/dev-api/v1/sandbox" }
+
+        { GameTesterMode.Production, "http://localhost:5001/dev-api/v1" },
+        { GameTesterMode.Sandbox, "http://localhost:5001/dev-api/v1/sandbox" }
     };
     private static string serverUrl { get { return serverUrls[Mode]; } }
 
@@ -39,12 +42,14 @@ public static class GameTester
 
     public static bool PlayerAuthenticated { get; private set; }
     public static GameTesterPlayerAuthenticationMode PlayerAuthenticationMode { get; private set; }
+    public static string PlayerName { get; private set; }
 
     // ------------------------------------------------------------------------------------------------------ //
     // Private Fields
     // ------------------------------------------------------------------------------------------------------ //
     private static string developerToken;
-    private static string playerTokenOrPin;
+    private static string connectTokenOrPin;
+    private static string playerToken;
 
     // ------------------------------------------------------------------------------------------------------ //
     // Initialize
@@ -64,16 +69,12 @@ public static class GameTester
         var obj = new Dictionary<string, object>();
 
         obj.Add("developerToken", developerToken);
-
-        if (PlayerAuthenticationMode == GameTesterPlayerAuthenticationMode.Pin)
-            obj.Add("playerPin", playerTokenOrPin);
-        else
-            obj.Add("playerToken", playerTokenOrPin);
+        obj.Add("playerToken", playerToken);
 
         return obj;
     }
 
-    private static IEnumerator doPost(string subUrl, Dictionary<string, object> body, Action<GameTesterResponse> callback)
+    private static IEnumerator doPost<T>(string subUrl, Dictionary<string, object> body, Action<T> callback, Func<UnityWebRequest, T> parser)
     {
         using (var request = new UnityWebRequest(String.Format("{0}{1}", serverUrl, subUrl), "POST"))
         {
@@ -87,7 +88,7 @@ public static class GameTester
                 sb.Append('"');
 
                 sb.Append(':');
-                if (prop.Value is string) 
+                if (prop.Value is string)
                 {
                     sb.Append('"');
                     sb.Append(prop.Value);
@@ -98,7 +99,7 @@ public static class GameTester
                     sb.Append(prop.Value);
                 }
 
-                if (index < body.Count - 1) 
+                if (index < body.Count - 1)
                 {
                     sb.Append(',');
                 }
@@ -114,10 +115,8 @@ public static class GameTester
 
             yield return request.SendWebRequest();
 
-            if (request.isNetworkError || request.isHttpError)
-                callback(GameTesterResponse.HttpError(request.error));
-            else
-                callback(GameTesterResponse.ParseResponse(request.downloadHandler.text));
+            var response = parser(request);
+            callback(response);
         }
     }
 
@@ -126,16 +125,14 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     public static void SetPlayerPin(string pin)
     {
-        playerTokenOrPin = pin;
+        connectTokenOrPin = pin;
         PlayerAuthenticationMode = GameTesterPlayerAuthenticationMode.Pin;
-        PlayerAuthenticated = true;
     }
 
     public static void SetPlayerToken(string token)
     {
-        playerTokenOrPin = token;
-        PlayerAuthenticationMode = GameTesterPlayerAuthenticationMode.Token;
-        PlayerAuthenticated = true;
+        connectTokenOrPin = token;
+        PlayerAuthenticationMode = GameTesterPlayerAuthenticationMode.ConnectToken;
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -143,23 +140,39 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     public static class Api
     {
-        public static IEnumerator Auth(Action<GameTesterResponse> callback)
+        public static IEnumerator Auth(Action<GameTesterAuthResponse> callback)
         {
-            return doPost("/auth", createApiObject(), callback);
+            var obj = new Dictionary<string, object>();
+
+            obj.Add("developerToken", developerToken);
+
+            if (PlayerAuthenticationMode == GameTesterPlayerAuthenticationMode.Pin)
+                obj.Add("playerPin", connectTokenOrPin);
+            else
+                obj.Add("connectToken", connectTokenOrPin);
+
+            return doPost("/auth", obj, o => {
+                if (o.Code == GameTesterResponseCode.Success)
+                {
+                    playerToken = o.PlayerToken;
+                    PlayerName = o.PlayerName;
+                    PlayerAuthenticated = true;
+                }
+                callback(o);
+            }, GameTesterAuthResponse.Parse);
         }
 
         public static IEnumerator Datapoint(int datapointId, Action<GameTesterResponse> callback)
         {
             var body = createApiObject();
             body.Add("datapointId", datapointId);
-            return doPost(string.Empty, body, callback);
+            return doPost(string.Empty, body, callback, GameTesterResponse.Parse);
         }
 
         public static IEnumerator UnlockTest(Action<GameTesterResponse> callback)
         {
             var body = createApiObject();
-            body.Add("function", "unlock");
-            return doPost(string.Empty, body, callback);
+            return doPost("/unlock", body, callback, GameTesterResponse.Parse);
         }
     }
 
@@ -169,33 +182,42 @@ public static class GameTester
 // Response
 // ------------------------------------------------------------------------------------------------------ //
 
-public enum GameTesterResponseCode: int
+public enum GameTesterResponseCode : int
 {
     HttpError = -10,
     ResponseParseError = -11,
-    
+
     Success = -1,
-    
+
     GeneralError = 0,
-    
+
     MissingDeveloperToken = 1,
     MissingPlayerAuthentication = 2,
     InvalidDeveloperToken = 3,
-    InvalidPlayerToken = 4,
+    InvalidPlayerConnectToken = 4,
     InvalidPlayerPin = 5,
-    MissingParameters = 6,
+    MissingDatapoint = 6,
     DataPointDoesNotExist = 7,
     TestNotRunning = 8,
     InvalidPlayerForTest = 9,
-    InvalidFunctionName = 10,
-    TestAlreadyUnlocked = 11,
-    TestNotInSetupState = 12,
+    TestAlreadyUnlocked = 10,
+    TestNotInSetupState = 11,
+    MissingPlayerToken = 12,
+    InvalidPlayerToken = 13,
 }
 
 public struct GameTesterResponse
 {
     public GameTesterResponseCode Code { get; private set; }
     public string Message { get; private set; }
+
+    public static GameTesterResponse Parse(UnityWebRequest request)
+    {
+        if (request.isNetworkError || request.isHttpError)
+            return GameTesterResponse.HttpError(request.error);
+        else
+            return GameTesterResponse.ParseResponse(request.downloadHandler.text);
+    }
 
     public static GameTesterResponse ParseResponse(string webResult)
     {
@@ -235,4 +257,65 @@ public struct GameTesterResponse
     }
 
     public override string ToString() { return String.Format("[({0}){1}] {2}", (int)Code, Enum.GetName(typeof(GameTesterResponseCode), Code), Message); }
+}
+
+public struct GameTesterAuthResponse
+{
+    public GameTesterResponseCode Code { get; private set; }
+    public string Message { get; private set; }
+    public string PlayerToken { get; private set; }
+    public string PlayerName { get; private set; }
+
+    public static GameTesterAuthResponse Parse(UnityWebRequest request)
+    {
+        if (request.isNetworkError || request.isHttpError)
+            return GameTesterAuthResponse.HttpError(request.error);
+        else
+            return GameTesterAuthResponse.ParseResponse(request.downloadHandler.text);
+    }
+
+    public static GameTesterAuthResponse ParseResponse(string webResult)
+    {
+        try
+        {
+            var response = JsonUtility.FromJson<ResponseJson>(webResult);
+            return new GameTesterAuthResponse
+            {
+                Code = (GameTesterResponseCode)response.code,
+                Message = response.message,
+                PlayerToken = response.playerToken,
+                PlayerName = response.playerName,
+            };
+        }
+        catch (Exception e)
+        {
+            return new GameTesterAuthResponse
+            {
+                Code = GameTesterResponseCode.ResponseParseError,
+                Message = e.Message,
+                PlayerToken = null,
+                PlayerName = null
+            };
+        }
+    }
+
+    public static GameTesterAuthResponse HttpError(string error)
+    {
+        return new GameTesterAuthResponse
+        {
+            Code = GameTesterResponseCode.HttpError,
+            Message = error
+        };
+    }
+
+    [System.Serializable]
+    public class ResponseJson
+    {
+        public int code;
+        public string message;
+        public string playerToken;
+        public string playerName;
+    }
+
+    public override string ToString() { return String.Format("[({0}){1}] PlayerName: {2}, {3}", (int)Code, Enum.GetName(typeof(GameTesterResponseCode), Code), PlayerName, Message); }
 }
