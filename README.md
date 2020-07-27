@@ -28,7 +28,7 @@ private void Auth()
    GameTester.SetPlayerToken(playerToken);
    
    // Call to test if playerPin or playerToken is valid.
-   // This is recommended. Handle error codes and prevent starting the test.
+   // This is required. The auth call will return a playerToken that is used in subsequent calls.
    StartCoroutine(GameTester.Api.Auth(o => 
    {
       if (o.Code == GameTesterResponseCode.InvalidPlayerToken)
