@@ -26,11 +26,8 @@ public static class GameTester
     // ------------------------------------------------------------------------------------------------------ //
     private static Dictionary<GameTesterMode, string> serverUrls = new Dictionary<GameTesterMode, string>
     {
-        //{ GameTesterMode.Production, "https://server.gametester.gg/dev-api/v1" },
-        //{ GameTesterMode.Sandbox, "https://server.gametester.gg/dev-api/v1/sandbox" }
-
-        { GameTesterMode.Production, "http://localhost:5001/dev-api/v1" },
-        { GameTesterMode.Sandbox, "http://localhost:5001/dev-api/v1/sandbox" }
+        { GameTesterMode.Production, "https://server.gametester.gg/dev-api/v1" },
+        { GameTesterMode.Sandbox, "https://server.gametester.gg/dev-api/v1/sandbox" }
     };
     private static string serverUrl { get { return serverUrls[Mode]; } }
 
