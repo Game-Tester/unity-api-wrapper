@@ -201,6 +201,7 @@ public enum GameTesterResponseCode : int
     TestNotInSetupState = 11,
     MissingPlayerToken = 12,
     InvalidPlayerToken = 13,
+    TestFinished = 14,
 }
 
 public struct GameTesterResponse
