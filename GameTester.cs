@@ -48,14 +48,17 @@ public static class GameTester
     private static string connectTokenOrPin;
     private static string playerToken;
 
+    private static bool doLogging;
+
     // ------------------------------------------------------------------------------------------------------ //
     // Initialize
     // ------------------------------------------------------------------------------------------------------ //
-    public static void Initialize(GameTesterMode mode, string developerToken)
+    public static void Initialize(GameTesterMode mode, string developerToken, bool debugLogging = false)
     {
         Mode = mode;
         GameTester.developerToken = developerToken;
         Initialized = true;
+        doLogging = debugLogging;
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -73,7 +76,8 @@ public static class GameTester
 
     private static IEnumerator doPost<T>(string subUrl, Dictionary<string, object> body, Action<T> callback, Func<UnityWebRequest, T> parser)
     {
-        using (var request = new UnityWebRequest(String.Format("{0}{1}", serverUrl, subUrl), "POST"))
+        var url = String.Format("{0}{1}", serverUrl, subUrl);
+        using (var request = new UnityWebRequest(url, "POST"))
         {
             var sb = new StringBuilder();
             sb.Append('{');
@@ -105,6 +109,11 @@ public static class GameTester
             sb.Append('}');
 
             var json = sb.ToString();
+
+            if (doLogging) {
+                Debug.Log($"POST ({url}): {json}");
+            }
+
             byte[] jsonToSend = System.Text.Encoding.UTF8.GetBytes(json);
             request.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
             request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
@@ -149,6 +158,11 @@ public static class GameTester
                 obj.Add("connectToken", connectTokenOrPin);
 
             return doPost("/auth", obj, o => {
+
+                if (doLogging) {
+                    Debug.Log(o);
+                }
+
                 if (o.Code == GameTesterResponseCode.Success)
                 {
                     playerToken = o.PlayerToken;
@@ -163,13 +177,30 @@ public static class GameTester
         {
             var body = createApiObject();
             body.Add("datapointId", datapointId);
-            return doPost(string.Empty, body, callback, GameTesterResponse.Parse);
+
+            if (doLogging) {
+                return doPost(string.Empty, body, o => {
+                    Debug.Log(o);
+                    callback(o);
+                }, GameTesterResponse.Parse);
+            } else {
+                return doPost(string.Empty, body, callback, GameTesterResponse.Parse);
+            }
+
         }
 
         public static IEnumerator UnlockTest(Action<GameTesterResponse> callback)
         {
             var body = createApiObject();
-            return doPost("/unlock", body, callback, GameTesterResponse.Parse);
+
+            if (doLogging) {
+                return doPost("/unlock", body, o => {
+                    Debug.Log(o);
+                    callback(o);
+                }, GameTesterResponse.Parse);
+            } else {
+                return doPost("/unlock", body, callback, GameTesterResponse.Parse);
+            }
         }
     }
 
