@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
@@ -105,7 +105,7 @@ public static class GameTester
             sb.Append('}');
 
             var json = sb.ToString();
-            byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(json);
+            byte[] jsonToSend = System.Text.Encoding.UTF8.GetBytes(json);
             request.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
             request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
